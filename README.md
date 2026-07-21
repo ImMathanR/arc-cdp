@@ -6,6 +6,26 @@ CDP tools (Puppeteer, Playwright, `chrome-remote-interface`, Claude's `/chrome-c
 
 macOS only (it uses `launchd` + Arc).
 
+## Quickstart
+
+```bash
+git clone https://github.com/immathanr/arc-cdp.git
+cd arc-cdp && ./install.sh
+```
+
+That's the whole setup. From now on **Arc always answers the Chrome DevTools Protocol at `http://127.0.0.1:9223`** — across restarts, and across Arc's auto-updates. Check it, then drive it:
+
+```bash
+arc-debug-ensure status                        # → debug: UP (port 9223 answering)
+curl -s http://127.0.0.1:9223/json/version     # the CDP handshake
+
+node arc-cdp.mjs list                          # list open tabs (id · title · url)
+node arc-cdp.mjs eval <id> "document.title"    # run JS in a tab
+node arc-cdp.mjs shot <id> shot.png            # screenshot a tab
+```
+
+`<id>` is a unique prefix of a tab id from `list`. Prefer Puppeteer or Playwright? They connect to the same URL — see [Drive it from your tools](#drive-it-from-your-tools).
+
 ---
 
 ## Why this exists
@@ -54,7 +74,7 @@ arc-debug-ensure status
 curl -s http://127.0.0.1:9223/json/version
 ```
 
-## Use it
+## Drive it from your tools
 
 The endpoint is standard CDP at `http://127.0.0.1:9223` — drive it with anything.
 
