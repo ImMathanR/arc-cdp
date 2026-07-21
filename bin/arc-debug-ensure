@@ -1,0 +1,83 @@
+#!/bin/bash
+# arc-debug-ensure — keep Arc reachable on the CDP remote-debugging port.
+#
+# Run periodically by the com.arc.debug-heal LaunchAgent. Arc updates via
+# Sparkle, which replaces the app bundle and relaunches Arc WITHOUT the
+# --remote-debugging-port flag, killing the debug session. This script detects
+# that case (Arc running, but the debug port not answering) and gracefully
+# quits + relaunches Arc with the flag, so you never have to do it by hand.
+#
+# Design notes:
+#   - Does NOTHING if the debug port is already answering (the normal case).
+#   - Does NOTHING if Arc isn't running, so you can still Cmd-Q it and have it
+#     stay closed (no "I can't quit my browser" loop).
+#   - "status" prints what it sees without changing anything (safe to run).
+#
+# Modes:  heal (default) | login | status
+# Env:    ARC_CDP_PORT (default 9223, must match the LaunchAgents)
+#         ARC_APP      (default /Applications/Arc.app)
+
+PORT="${ARC_CDP_PORT:-9223}"
+ARC_APP="${ARC_APP:-/Applications/Arc.app}"
+LOG="$HOME/Library/Logs/arc-debug-ensure.log"
+MODE="${1:-heal}"
+
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S')  $*" >>"$LOG"; }
+
+# Debug endpoint actually answering (not just a port open)?
+port_up() {
+  /usr/bin/curl -sf --max-time 2 "http://127.0.0.1:${PORT}/json/version" >/dev/null 2>&1
+}
+
+# Arc's main process running? (-x = exact match on "Arc", ignores "Arc Helper")
+arc_running() {
+  /usr/bin/pgrep -x Arc >/dev/null 2>&1
+}
+
+launch_with_flag() {
+  /usr/bin/open -a "$ARC_APP" --args --remote-debugging-port="$PORT"
+}
+
+case "$MODE" in
+  status)
+    if port_up; then echo "debug: UP (port $PORT answering)";
+    else echo "debug: DOWN (port $PORT not answering)"; fi
+    if arc_running; then echo "arc:   RUNNING"; else echo "arc:   not running"; fi
+    if port_up; then echo "action: none (healthy)";
+    elif arc_running; then echo "action: WOULD quit + relaunch Arc with --remote-debugging-port=$PORT";
+    else echo "action: none (Arc not running)"; fi
+    exit 0
+    ;;
+  login)
+    # Login mode: ensure Arc comes up with the flag even from a cold start.
+    if port_up; then exit 0; fi
+    if arc_running; then
+      log "login: Arc up without debug — relaunching with flag"
+      /usr/bin/osascript -e 'quit app "Arc"' >/dev/null 2>&1
+      for _ in $(seq 1 20); do arc_running || break; sleep 0.5; done
+    else
+      log "login: launching Arc with --remote-debugging-port=$PORT"
+    fi
+    launch_with_flag
+    exit 0
+    ;;
+  heal|*)
+    # Heal mode: only act if Arc is running but debug is dead (e.g. post-update).
+    port_up && exit 0
+    arc_running || exit 0
+    # Grace window: Arc may just be mid-launch (process up, port not listening
+    # yet). Re-check for ~8s before deciding the port is genuinely dead, so we
+    # don't kill a still-initializing Arc (e.g. racing the login launch).
+    for _ in $(seq 1 8); do
+      sleep 1
+      port_up && exit 0
+      arc_running || exit 0
+    done
+    log "heal: Arc running without debug port $PORT — quitting + relaunching with flag"
+    /usr/bin/osascript -e 'quit app "Arc"' >/dev/null 2>&1
+    for _ in $(seq 1 20); do arc_running || break; sleep 0.5; done
+    launch_with_flag
+    log "heal: relaunched Arc with --remote-debugging-port=$PORT"
+    exit 0
+    ;;
+esac

@@ -1,0 +1,12 @@
+#!/bin/bash
+# arc-debug — launch Arc with Chrome DevTools Protocol debugging enabled.
+#
+# Use this for a one-off manual launch. For a hands-off setup that also survives
+# Arc's auto-updates, install the LaunchAgents (see install.sh / the README).
+#
+# Override the port with ARC_CDP_PORT (must match the LaunchAgents if you use them).
+
+PORT="${ARC_CDP_PORT:-9223}"
+ARC_BIN="${ARC_BIN:-/Applications/Arc.app/Contents/MacOS/Arc}"
+
+exec "$ARC_BIN" --remote-debugging-port="$PORT" "$@"

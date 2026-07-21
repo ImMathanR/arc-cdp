@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Launches Arc with the CDP debug port at login. Paths filled in by install.sh. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.arc.debug-launch</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__ARC_BIN__</string>
+        <string>--remote-debugging-port=__PORT__</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

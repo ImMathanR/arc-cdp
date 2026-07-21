@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Every 30s (and at login): re-add the debug flag if an Arc update dropped it.
+     Paths filled in by install.sh. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.arc.debug-heal</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>__ENSURE__</string>
+        <string>heal</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>30</integer>
+    <key>StandardErrorPath</key>
+    <string>__ERRLOG__</string>
+</dict>
+</plist>

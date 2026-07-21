@@ -1,0 +1,114 @@
+# arc-cdp
+
+**Drive the [Arc browser](https://arc.net) with the Chrome DevTools Protocol — and keep it working across Arc's auto-updates.**
+
+CDP tools (Puppeteer, Playwright, `chrome-remote-interface`, Claude's `/chrome-cdp`, your own scripts) assume Chrome. Arc is Chromium underneath and speaks the exact same protocol — but only if it's launched with `--remote-debugging-port`, and Arc never is. `arc-cdp` fixes that with two tiny launch agents so Arc is always reachable on a debug port, then **self-heals after every Arc update** so it stays that way.
+
+macOS only (it uses `launchd` + Arc).
+
+---
+
+## Why this exists
+
+Point any CDP client at Chrome and it works, because Chrome tooling knows how to launch Chrome with a debug port. Do the same for Arc and you hit two walls:
+
+1. **Arc is never launched with the flag.** When Arc is your default browser it's opened by the OS, by links, by Spotlight — never with `--remote-debugging-port`. So there's no debug endpoint to connect to, and a "connect to Chrome" tool finds nothing (Arc isn't Chrome, and the running Arc has no open port).
+
+2. **Arc updates silently kill the debug port.** Arc auto-updates through Sparkle. An update swaps the app bundle and **relaunches Arc without your flags**. Even if you *had* started Arc with `--remote-debugging-port`, an update that lands mid-session drops it — and your automation just stops connecting, with no obvious reason why.
+
+So a one-off `Arc --remote-debugging-port=9223` isn't enough. You need something that keeps the port alive.
+
+## How it works
+
+Two `launchd` agents and one small script:
+
+- **`com.arc.debug-launch`** — at login, starts Arc with `--remote-debugging-port=9223`.
+- **`com.arc.debug-heal`** — every 30 seconds (and at login), runs `arc-debug-ensure`. If Arc is **running but the debug port isn't answering** — exactly the state a Sparkle update leaves you in — it gracefully quits and relaunches Arc *with* the flag. Within ~30s of any Arc upgrade, the debug endpoint is back. **You never have to think about it.**
+
+`arc-debug-ensure` is deliberately conservative:
+
+- If the port is already answering → does nothing (the normal case).
+- If Arc isn't running at all → does nothing (so you can quit Arc and have it *stay* quit).
+- It waits out an ~8s grace window before acting, so it never kills an Arc that's just mid-launch.
+
+That's the whole trick: the debug port isn't something you turn on once — it's something that's continuously *ensured*, so an Arc upgrade can't take it away.
+
+## Install
+
+```bash
+git clone https://github.com/immathanr/arc-cdp.git
+cd arc-cdp
+./install.sh
+```
+
+That installs `arc-debug` and `arc-debug-ensure` to `~/.local/bin`, writes the two LaunchAgents to `~/Library/LaunchAgents` (with your real paths), loads them, and brings Arc up on the debug port.
+
+Verify:
+
+```bash
+arc-debug-ensure status
+# debug: UP (port 9223 answering)
+# arc:   RUNNING
+# action: none (healthy)
+
+curl -s http://127.0.0.1:9223/json/version
+```
+
+## Use it
+
+The endpoint is standard CDP at `http://127.0.0.1:9223` — drive it with anything.
+
+**The included zero-dependency client** (Node 22+):
+
+```bash
+node arc-cdp.mjs list                         # list open tabs (id · title · url)
+node arc-cdp.mjs nav  <id> https://example.com
+node arc-cdp.mjs eval <id> "document.title"
+node arc-cdp.mjs shot <id> shot.png
+```
+
+`<id>` is a unique prefix of a tab id from `list`.
+
+**Puppeteer:**
+
+```js
+import puppeteer from "puppeteer-core";
+const browser = await puppeteer.connect({ browserURL: "http://127.0.0.1:9223" });
+```
+
+**Playwright:**
+
+```js
+import { chromium } from "playwright";
+const browser = await chromium.connectOverCDP("http://127.0.0.1:9223");
+```
+
+**Plain HTTP / curl** — list tabs, then open a WebSocket to a tab's `webSocketDebuggerUrl`:
+
+```bash
+curl -s http://127.0.0.1:9223/json | jq '.[] | {id, title, url}'
+```
+
+## Configuration
+
+| Env var | Default | Notes |
+| --- | --- | --- |
+| `ARC_CDP_PORT` | `9223` | Debug port. Must match the LaunchAgents — set it before `./install.sh`. |
+| `ARC_CDP_HOST` | `127.0.0.1` | Host the client connects to. |
+| `ARC_APP` | `/Applications/Arc.app` | Path to Arc, for non-standard installs. |
+
+## Uninstall
+
+```bash
+./uninstall.sh
+```
+
+Removes the agents and scripts. Arc keeps running with the flag until you quit and reopen it normally.
+
+## Security note
+
+The debug port listens on **loopback only** (`127.0.0.1`), so it isn't exposed to your network. But like Chrome's own remote-debugging port, anything that can already run code as your user can drive your browser through it. That's the same trade-off you accept with any CDP automation — just be aware the port is always up.
+
+## License
+
+MIT © immathanr
