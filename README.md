@@ -1,8 +1,8 @@
 # arc-cdp
 
-**Drive the [Arc browser](https://arc.net) with the Chrome DevTools Protocol — and keep it working across Arc's auto-updates.**
+**Let your coding agent — Claude Code, Codex — drive the [Arc browser](https://arc.net), and keep it working across Arc's auto-updates.**
 
-CDP tools (Puppeteer, Playwright, `chrome-remote-interface`, Claude's `/chrome-cdp`, your own scripts) assume Chrome. Arc is Chromium underneath and speaks the exact same protocol — but only if it's launched with `--remote-debugging-port`, and Arc never is. `arc-cdp` fixes that with two tiny launch agents so Arc is always reachable on a debug port, then **self-heals after every Arc update** so it stays that way.
+Coding agents can drive a browser over the Chrome DevTools Protocol; that's how Claude Code's `/chrome-cdp` works. But it attaches to **Chrome**. Make Arc your default browser and there's nothing to attach to. Arc is Chromium and speaks the same protocol, but only when it's launched with `--remote-debugging-port` — and Arc never is. `arc-cdp` fixes that with two tiny launch agents so Arc is always reachable on a debug port, then **self-heals after every Arc update**. Then you point your agent at it: `/arc` in Claude Code, or the endpoint in Codex.
 
 macOS only (it uses `launchd` + Arc).
 
@@ -24,7 +24,7 @@ node arc-cdp.mjs eval <id> "document.title"    # run JS in a tab
 node arc-cdp.mjs shot <id> shot.png            # screenshot a tab
 ```
 
-`<id>` is a unique prefix of a tab id from `list`. Prefer Puppeteer or Playwright? They connect to the same URL — see [Drive it from your tools](#drive-it-from-your-tools).
+`<id>` is a unique prefix of a tab id from `list`. In Claude Code, just run **`/arc`** — see [Use it with your coding agent](#use-it-with-your-coding-agent).
 
 ---
 
@@ -74,40 +74,19 @@ arc-debug-ensure status
 curl -s http://127.0.0.1:9223/json/version
 ```
 
-## Drive it from your tools
+## Use it with your coding agent
 
-The endpoint is standard CDP at `http://127.0.0.1:9223` — drive it with anything.
+- **Claude Code** — `install.sh` drops an `/arc` skill into `~/.claude/skills` (only if Claude Code is present, and it never overwrites an existing one). Just run **`/arc`** and ask it to drive your Arc tabs — the same way `/chrome-cdp` drives Chrome.
+- **Codex, or any other agent/tool** — point it at the CDP endpoint **`http://127.0.0.1:9223`**. The bundled client is a working, dependency-free example (Node 22+):
 
-**The included zero-dependency client** (Node 22+):
+  ```bash
+  node arc-cdp.mjs list                          # open tabs (id · title · url)
+  node arc-cdp.mjs nav  <id> https://example.com
+  node arc-cdp.mjs eval <id> "document.title"
+  node arc-cdp.mjs shot <id> shot.png
+  ```
 
-```bash
-node arc-cdp.mjs list                         # list open tabs (id · title · url)
-node arc-cdp.mjs nav  <id> https://example.com
-node arc-cdp.mjs eval <id> "document.title"
-node arc-cdp.mjs shot <id> shot.png
-```
-
-`<id>` is a unique prefix of a tab id from `list`.
-
-**Puppeteer:**
-
-```js
-import puppeteer from "puppeteer-core";
-const browser = await puppeteer.connect({ browserURL: "http://127.0.0.1:9223" });
-```
-
-**Playwright:**
-
-```js
-import { chromium } from "playwright";
-const browser = await chromium.connectOverCDP("http://127.0.0.1:9223");
-```
-
-**Plain HTTP / curl** — list tabs, then open a WebSocket to a tab's `webSocketDebuggerUrl`:
-
-```bash
-curl -s http://127.0.0.1:9223/json | jq '.[] | {id, title, url}'
-```
+  `<id>` is a unique prefix of a tab id from `list`.
 
 ## Configuration
 

@@ -40,6 +40,20 @@ for label in com.arc.debug-launch com.arc.debug-heal; do
   launchctl load  "$LA_DIR/$label.plist"
 done
 
+# Install the Claude Code /arc skill (only if Claude Code is present, and never
+# clobber an existing one).
+if [[ -d "$HOME/.claude" ]]; then
+  SKILL_DIR="$HOME/.claude/skills/arc"
+  if [[ -e "$SKILL_DIR/SKILL.md" ]]; then
+    echo "→ /arc skill already present at $SKILL_DIR — leaving it as-is"
+  else
+    echo "→ installing the Claude Code /arc skill"
+    mkdir -p "$SKILL_DIR/scripts"
+    cp "$REPO_DIR/skill/SKILL.md" "$SKILL_DIR/SKILL.md"
+    cp "$REPO_DIR/arc-cdp.mjs"    "$SKILL_DIR/scripts/arc-cdp.mjs"
+  fi
+fi
+
 echo "→ ensuring Arc is up with --remote-debugging-port=$PORT"
 "$ENSURE" login
 sleep 2
