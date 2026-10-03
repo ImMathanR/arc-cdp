@@ -51,6 +51,8 @@ if [[ -d "$HOME/.claude" ]]; then
     mkdir -p "$SKILL_DIR/scripts"
     cp "$REPO_DIR/skill/SKILL.md" "$SKILL_DIR/SKILL.md"
     cp "$REPO_DIR/arc-cdp.mjs"    "$SKILL_DIR/scripts/arc-cdp.mjs"
+    cp "$REPO_DIR/arc-spaces.mjs" "$SKILL_DIR/scripts/arc-spaces.mjs"   # arc-cdp.mjs imports it
+    cp "$REPO_DIR/jev-browse.py"  "$SKILL_DIR/scripts/jev-browse.py"    # optional; needs the jev skill
   fi
 fi
 

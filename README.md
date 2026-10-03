@@ -84,9 +84,17 @@ curl -s http://127.0.0.1:9223/json/version
   node arc-cdp.mjs nav  <id> https://example.com
   node arc-cdp.mjs eval <id> "document.title"
   node arc-cdp.mjs shot <id> shot.png
+  node arc-cdp.mjs snap <id>                     # accessibility tree (compact page structure)
+  node arc-cdp.mjs open https://example.com --space work   # reuse the tab already showing it in that Arc space
+  node arc-cdp.mjs click <id> "button.submit"    # also: clickxy, type, html, net, loadall, evalraw
   ```
 
-  `<id>` is a unique prefix of a tab id from `list`.
+  `<id>` is a unique prefix of a tab id from `list`. Page commands go through a small per-tab daemon that keeps the
+  CDP session open, so repeated commands are instant; it exits after 20 minutes idle. Run `node arc-cdp.mjs` for the
+  full command list.
+
+- **Goal-driven browsing (optional)** — `jev-browse.py "<goal>" --start <url>` lets [Jev](https://typesafe.ai) decide
+  each step from the accessibility tree and acts through `agent-browser`; it needs the `jev` Claude Code skill.
 
 ## Configuration
 
@@ -110,4 +118,4 @@ The debug port listens on **loopback only** (`127.0.0.1`), so it isn't exposed t
 
 ## License
 
-MIT © immathanr
+MIT © immathanr. `arc-cdp.mjs` is adapted from [pasky/chrome-cdp-skill](https://github.com/pasky/chrome-cdp-skill) (MIT © pasky); both notices are in [LICENSE](LICENSE).
